@@ -8,7 +8,7 @@ import { Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
 import { PresenceService } from '../presence/presence.service';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({ cors: { origin: '*' }, maxHttpBufferSize: 1e7 })
 export class RelayGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly authService: AuthService,
