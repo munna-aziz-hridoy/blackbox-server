@@ -11,6 +11,7 @@ export type Account = {
   code: string | null;
   codeExpiresAt: number | null;
   createdAt: number;
+  pushToken?: string | null;
 };
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -85,6 +86,23 @@ export class DirectoryService {
   find(email: string): Account | null {
     const account = this.accounts.get(this.hashEmail(email));
     return account?.verified ? account : null;
+  }
+
+  setPushToken(userId: string, token: string): void {
+    for (const account of this.accounts.values()) {
+      if (account.userId === userId) {
+        account.pushToken = token || null;
+        this.persist();
+        return;
+      }
+    }
+  }
+
+  getPushToken(userId: string): string | null {
+    for (const account of this.accounts.values()) {
+      if (account.userId === userId) return account.pushToken ?? null;
+    }
+    return null;
   }
 
   private hashEmail(email: string): string {

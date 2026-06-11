@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Headers,
   Post,
   ServiceUnavailableException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { DirectoryService } from '../directory/directory.service';
@@ -54,5 +56,19 @@ export class AccountsController {
       publicKey: account.publicKey,
     });
     return { identityKey };
+  }
+
+  @Post('push-token')
+  setPushToken(
+    @Headers('authorization') authorization: string | undefined,
+    @Body() body: { token?: string },
+  ): { ok: true } {
+    const identityKey = authorization?.replace(/^Bearer /, '') ?? '';
+    const payload = this.authService.verifyIdentityKey(identityKey);
+    if (!payload) {
+      throw new UnauthorizedException();
+    }
+    this.directory.setPushToken(payload.userId, body?.token ?? '');
+    return { ok: true };
   }
 }

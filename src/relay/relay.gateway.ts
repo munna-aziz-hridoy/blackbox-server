@@ -6,13 +6,17 @@ import {
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
+import { DirectoryService } from '../directory/directory.service';
 import { PresenceService } from '../presence/presence.service';
+import { PushService } from '../push/push.service';
 
-@WebSocketGateway({ cors: { origin: '*' }, maxHttpBufferSize: 1e7 })
+@WebSocketGateway({ cors: { origin: '*' }, maxHttpBufferSize: 2e7 })
 export class RelayGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly authService: AuthService,
+    private readonly directory: DirectoryService,
     private readonly presence: PresenceService,
+    private readonly push: PushService,
   ) {}
 
   handleConnection(socket: Socket) {
@@ -37,6 +41,11 @@ export class RelayGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { to, ...envelope } = data;
     const recipient = this.presence.get(to);
     if (!recipient) {
+      this.push.send(this.directory.getPushToken(to), {
+        title: 'New message',
+        body: 'You have a new message',
+        data: { type: 'message', from: socket.data.userId },
+      });
       return { delivered: false };
     }
     recipient.emit('message', {
@@ -55,6 +64,13 @@ export class RelayGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { to, ...envelope } = data;
     const recipient = this.presence.get(to);
     if (!recipient) {
+      if (envelope.kind === 'offer') {
+        this.push.send(this.directory.getPushToken(to), {
+          title: 'Incoming call',
+          body: 'Tap to open Black Box',
+          data: { type: 'call', from: socket.data.userId },
+        });
+      }
       return { delivered: false };
     }
     recipient.emit('call:signal', {
